@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
+import { ParamsDictionary } from 'express-serve-static-core';
 import { verifyToken } from '../utils/auth';
 import { HttpErrors } from '../utils/errors';
 
 /**
  * Extended Request interface with user data
  */
-export interface AuthRequest extends Request {
+export interface AuthRequest extends Request<ParamsDictionary, any, any> {
   userId?: string;
   user?: {
     id: string;
