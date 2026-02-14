@@ -111,7 +111,22 @@ export const UserRepository = {
    */
   async findPublicProfile(id: string): Promise<UserPublic | null> {
     const result = await query(
-      `SELECT u.id, u.username, u.avatar, u.bio, up.*
+      `SELECT 
+         u.id AS user_id,
+         u.username,
+         u.avatar,
+         u.bio,
+         up.id AS profile_id,
+         up.user_id AS profile_user_id,
+         up.personality_traits,
+         up.communication_style,
+         up.energy_level,
+         up.response_speed,
+         up.interests,
+         up.location,
+         up.age,
+         up.created_at AS profile_created_at,
+         up.updated_at AS profile_updated_at
        FROM users u
        LEFT JOIN user_profiles up ON u.id = up.user_id
        WHERE u.id = $1`,
@@ -122,13 +137,13 @@ export const UserRepository = {
 
     const row = result.rows[0];
     return {
-      id: row.id,
+      id: row.user_id,
       username: row.username,
       avatar: row.avatar,
       bio: row.bio,
-      profile: row.user_id ? {
-        id: row.id,
-        user_id: row.user_id,
+      profile: row.profile_user_id ? {
+        id: row.profile_id,
+        user_id: row.profile_user_id,
         personality_traits: row.personality_traits,
         communication_style: row.communication_style,
         energy_level: row.energy_level,
@@ -136,8 +151,8 @@ export const UserRepository = {
         interests: row.interests,
         location: row.location,
         age: row.age,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
+        created_at: row.profile_created_at,
+        updated_at: row.profile_updated_at,
       } : undefined,
     };
   },
@@ -184,7 +199,22 @@ export const UserRepository = {
 
     // Get paginated data
     const result = await query(
-      `SELECT u.id, u.username, u.avatar, u.bio, up.* 
+      `SELECT 
+         u.id AS user_id,
+         u.username,
+         u.avatar,
+         u.bio,
+         up.id AS profile_id,
+         up.user_id AS profile_user_id,
+         up.personality_traits,
+         up.communication_style,
+         up.energy_level,
+         up.response_speed,
+         up.interests,
+         up.location,
+         up.age,
+         up.created_at AS profile_created_at,
+         up.updated_at AS profile_updated_at
        FROM users u
        LEFT JOIN user_profiles up ON u.id = up.user_id
        WHERE u.is_active = true
@@ -194,13 +224,13 @@ export const UserRepository = {
     );
 
     const data: UserPublic[] = result.rows.map(row => ({
-      id: row.id,
+      id: row.user_id,
       username: row.username,
       avatar: row.avatar,
       bio: row.bio,
-      profile: row.user_id ? {
-        id: row.id,
-        user_id: row.user_id,
+      profile: row.profile_user_id ? {
+        id: row.profile_id,
+        user_id: row.profile_user_id,
         personality_traits: row.personality_traits,
         communication_style: row.communication_style,
         energy_level: row.energy_level,
@@ -208,8 +238,8 @@ export const UserRepository = {
         interests: row.interests,
         location: row.location,
         age: row.age,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
+        created_at: row.profile_created_at,
+        updated_at: row.profile_updated_at,
       } : undefined,
     }));
 
@@ -263,7 +293,22 @@ export const UserRepository = {
     const term = `%${searchTerm}%`;
 
     const result = await query(
-      `SELECT u.id, u.username, u.avatar, u.bio, up.*
+      `SELECT
+         u.id AS user_id,
+         u.username,
+         u.avatar,
+         u.bio,
+         up.id AS profile_id,
+         up.user_id AS profile_user_id,
+         up.personality_traits,
+         up.communication_style,
+         up.energy_level,
+         up.response_speed,
+         up.interests,
+         up.location,
+         up.age,
+         up.created_at AS profile_created_at,
+         up.updated_at AS profile_updated_at
        FROM users u
        LEFT JOIN user_profiles up ON u.id = up.user_id
        WHERE u.is_active = true 
@@ -273,13 +318,13 @@ export const UserRepository = {
     );
 
     return result.rows.map(row => ({
-      id: row.id,
+      id: row.user_id,
       username: row.username,
       avatar: row.avatar,
       bio: row.bio,
-      profile: row.user_id ? {
-        id: row.id,
-        user_id: row.user_id,
+      profile: row.profile_user_id ? {
+        id: row.profile_id,
+        user_id: row.profile_user_id,
         personality_traits: row.personality_traits,
         communication_style: row.communication_style,
         energy_level: row.energy_level,
@@ -287,8 +332,8 @@ export const UserRepository = {
         interests: row.interests,
         location: row.location,
         age: row.age,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
+        created_at: row.profile_created_at,
+        updated_at: row.profile_updated_at,
       } : undefined,
     }));
   },

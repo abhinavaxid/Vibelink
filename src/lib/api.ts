@@ -9,6 +9,15 @@ interface ApiRequestOptions extends RequestInit {
     token?: string;
 }
 
+interface ApiEnvelope<T> {
+    success: boolean;
+    data?: T;
+    error?: {
+        message?: string;
+    };
+    message?: string;
+}
+
 // ==================== TYPE DEFINITIONS ====================
 interface User {
     id: string;
@@ -102,12 +111,45 @@ class ApiClient {
             headers,
         });
 
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`API Error (${response.status}): ${error}`);
+        const rawText = await response.text();
+        let parsedBody: any = {};
+        if (rawText) {
+            try {
+                parsedBody = JSON.parse(rawText);
+            } catch {
+                parsedBody = {};
+            }
         }
 
-        return response.json() as Promise<T>;
+        if (!response.ok) {
+            const message =
+                parsedBody?.error?.message ||
+                parsedBody?.message ||
+                rawText ||
+                `Request failed with status ${response.status}`;
+            throw new Error(`API Error (${response.status}): ${message}`);
+        }
+
+        const envelope = parsedBody as ApiEnvelope<T>;
+        if (
+            envelope &&
+            typeof envelope === 'object' &&
+            'success' in envelope
+        ) {
+            if (!envelope.success) {
+                const message =
+                    envelope.error?.message ||
+                    envelope.message ||
+                    'Request failed';
+                throw new Error(message);
+            }
+
+            if (envelope.data !== undefined) {
+                return envelope.data;
+            }
+        }
+
+        return parsedBody as T;
     }
 
     // ==================== AUTHENTICATION ====================
@@ -141,9 +183,10 @@ class ApiClient {
 
     // ==================== USERS ====================
     async getCurrentUser(token: string): Promise<User> {
-        return this.request('/api/users/me', {
+        const result = await this.request<{ user: User }>('/api/users/me', {
             token,
         });
+        return result.user;
     }
 
     async updateProfile(
@@ -156,17 +199,19 @@ class ApiClient {
             bio?: string;
         }
     ): Promise<User> {
-        return this.request('/api/users/profile', {
-            method: 'PUT',
+        const result = await this.request<{ user: User }>('/api/users/me', {
+            method: 'PATCH',
             token,
             body: JSON.stringify(payload),
         });
+        return result.user;
     }
 
     async getUser(userId: string, token: string): Promise<User> {
-        return this.request(`/api/users/${userId}`, {
+        const result = await this.request<{ user: User }>(`/api/users/${userId}`, {
             token,
         });
+        return result.user;
     }
 
     async getUserStats(
@@ -180,15 +225,17 @@ class ApiClient {
 
     // ==================== ROOMS ====================
     async listRooms(token: string): Promise<Room[]> {
-        return this.request('/api/rooms', {
+        const result = await this.request<{ rooms: Room[] }>('/api/rooms', {
             token,
         });
+        return result.rooms || [];
     }
 
     async getRoom(roomId: string, token: string): Promise<Room> {
-        return this.request(`/api/rooms/${roomId}`, {
+        const result = await this.request<{ room: Room }>(`/api/rooms/${roomId}`, {
             token,
         });
+        return result.room;
     }
 
     async createRoom(
@@ -228,17 +275,19 @@ class ApiClient {
             participantIds: string[];
         }
     ): Promise<GameSession> {
-        return this.request('/api/games/session', {
+        const result = await this.request<{ session: GameSession }>('/api/games/session', {
             method: 'POST',
             token,
             body: JSON.stringify(payload),
         });
+        return result.session;
     }
 
     async getGameSession(sessionId: string, token: string): Promise<GameSession> {
-        return this.request(`/api/games/session/${sessionId}`, {
+        const result = await this.request<{ session: GameSession }>(`/api/games/session/${sessionId}`, {
             token,
         });
+        return result.session;
     }
 
     async submitRoundResponse(
@@ -249,11 +298,16 @@ class ApiClient {
             response: string;
         }
     ): Promise<GameResponse> {
-        return this.request('/api/games/response', {
+        const result = await this.request<{ response: GameResponse }>(`/api/games/session/${payload.sessionId}/response`, {
             method: 'POST',
             token,
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+                roundNumber: payload.roundNumber,
+                roundType: 'text',
+                responseText: payload.response,
+            }),
         });
+        return result.response;
     }
 
     async getGameResults(
@@ -303,7 +357,7 @@ class ApiClient {
 
     // ==================== HEALTH ====================
     async healthCheck(): Promise<HealthCheckResponse> {
-        return this.request('/api/health', {
+        return this.request('/health', {
             method: 'GET',
         });
     }

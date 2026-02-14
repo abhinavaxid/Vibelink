@@ -6,8 +6,8 @@
 const http = require('http');
 const https = require('https');
 
-const BASE_URL = 'http://localhost:5000';
-const FRONTEND_URL = 'http://localhost:3000';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // Color codes for terminal output
 const colors = {
@@ -33,6 +33,7 @@ const log = {
 function makeRequest(method, path, data = null, token = null) {
   return new Promise((resolve, reject) => {
     const url = new URL(path.startsWith('http') ? path : BASE_URL + path);
+    const transport = url.protocol === 'https:' ? https : http;
     
     const options = {
       hostname: url.hostname,
@@ -48,7 +49,7 @@ function makeRequest(method, path, data = null, token = null) {
       options.headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const req = http.request(options, (res) => {
+    const req = transport.request(options, (res) => {
       let responseData = '';
 
       res.on('data', (chunk) => {

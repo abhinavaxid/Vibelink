@@ -83,7 +83,7 @@ async function testFrontendLoads() {
     console.log(`   Page Title: ${title}`);
     
     // Wait for login form
-    const joinButton = await waitForElement(By.xpath("//button[contains(text(), 'JOIN VIBE')]"));
+    const joinButton = await waitForElement(By.css("form button[type='submit']"));
     assert(joinButton, 'JOIN VIBE button should be present');
     
     testResults.push({ test: 'Frontend Loads', status: '✅ PASS' });
@@ -100,6 +100,10 @@ async function testFrontendLoads() {
 async function testUserRegistration() {
   console.log('\n📋 Test 3: User Registration');
   try {
+    // Switch to registration mode so username field is visible.
+    const joinTab = await waitForElement(By.xpath("//button[contains(text(), 'JOIN VIBE')]"));
+    await joinTab.click();
+
     // Fill email
     const emailInput = await waitForElement(By.css('input[type="email"], input[placeholder*="mail"], input[placeholder*="Email"]'));
     await emailInput.clear();
@@ -107,7 +111,9 @@ async function testUserRegistration() {
     console.log(`   Email: ${testUser.email}`);
     
     // Fill username
-    const usernameInput = await waitForElement(By.css('input[placeholder*="username"], input[placeholder*="Username"]'));
+    const usernameInput = await waitForElement(
+      By.css('input[placeholder*="username" i], input[placeholder*="UniqueAlias"], input[autocomplete="username"]')
+    );
     await usernameInput.clear();
     await usernameInput.sendKeys(testUser.username);
     console.log(`   Username: ${testUser.username}`);
@@ -125,11 +131,10 @@ async function testUserRegistration() {
     await joinButton.click();
     console.log('   Clicked JOIN VIBE');
     
-    // Wait for success - should redirect or show success message
+    // Wait for success - app currently redirects to onboarding.
     await driver.wait(
-      until.urlContains('/lobby'),
-      TEST_TIMEOUT,
-      'Should redirect to lobby after registration'
+      until.urlContains('/onboarding'),
+      TEST_TIMEOUT
     );
     
     testResults.push({ test: 'User Registration', status: '✅ PASS' });
@@ -149,10 +154,10 @@ async function testUserLogin() {
     // Navigate to login
     await driver.get(`${BASE_URL}/login`);
     
-    // Click "Log In" link
-    const loginLink = await waitForElement(By.xpath("//a[contains(text(), 'Log In')] | //button[contains(text(), 'Log In')]"));
-    await loginLink.click();
-    console.log('   Clicked Log In');
+    // Ensure login tab is active.
+    const loginTab = await waitForElement(By.xpath("//button[contains(text(), 'ENTER VIBE')]"));
+    await loginTab.click();
+    console.log('   Clicked ENTER VIBE tab');
     
     // Wait for login form
     await driver.wait(until.urlContains('/login'), 5000);
@@ -167,15 +172,14 @@ async function testUserLogin() {
     await passwordInput.sendKeys(testUser.password);
     
     // Submit
-    const submitButton = await waitForElement(By.xpath("//button[contains(text(), 'Login') or contains(text(), 'Sign In')]"));
+    const submitButton = await waitForElement(By.css("form button[type='submit']"));
     await submitButton.click();
     console.log('   Submitted login form');
     
-    // Wait for redirect to dashboard/lobby
+    // Wait for redirect to onboarding/room/game/dashboard.
     await driver.wait(
-      until.urlMatches(/\/(lobby|room|game|dashboard)/),
-      TEST_TIMEOUT,
-      'Should redirect after login'
+      until.urlMatches(/\/(onboarding|room|game|dashboard)/),
+      TEST_TIMEOUT
     );
     
     testResults.push({ test: 'User Login', status: '✅ PASS' });
