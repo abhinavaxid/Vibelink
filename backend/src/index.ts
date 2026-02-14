@@ -11,7 +11,6 @@ import {
   authMiddleware,
   loggingMiddleware,
   rateLimitMiddleware,
-  corsMiddleware,
 } from './middleware';
 import { errorHandler } from './utils/errors';
 import { setupSocketHandlers } from './socket';
@@ -41,9 +40,15 @@ const socketServer = new SocketIOServer(httpServer, {
 
 /** ===================== MIDDLEWARE ===================== */
 
+// CORS configuration
+const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+const corsOptions = corsOrigin === '*' 
+  ? { origin: '*', credentials: false }
+  : { origin: corsOrigin.split(','), credentials: true };
+
 // Security middleware
 app.use(helmet());
-app.use(corsMiddleware());
+app.use(cors(corsOptions));
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
