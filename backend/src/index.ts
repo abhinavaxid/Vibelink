@@ -26,11 +26,16 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Create HTTP servers
 const httpServer = http.createServer(app);
+
+// Socket.io CORS config - handle wildcard properly
+const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+const socketCorsOrigin = corsOrigin === '*' ? '*' : corsOrigin.split(',');
+
 const socketServer = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') || 'http://localhost:3000',
+    origin: socketCorsOrigin,
     methods: ['GET', 'POST'],
-    credentials: true,
+    credentials: socketCorsOrigin !== '*',
   },
 });
 
