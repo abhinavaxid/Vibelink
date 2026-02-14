@@ -41,7 +41,6 @@ const socketServer = new SocketIOServer(httpServer, {
 /** ===================== MIDDLEWARE ===================== */
 
 // CORS configuration
-const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
 const corsOptions = corsOrigin === '*' 
   ? { origin: '*', credentials: false }
   : { origin: corsOrigin.split(','), credentials: true };
