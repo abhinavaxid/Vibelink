@@ -5,6 +5,7 @@ import { HttpErrors, asyncHandler } from '../utils/errors';
 import { authMiddleware, AuthRequest, optionalAuthMiddleware } from '../middleware';
 
 const router = Router();
+const USER_ID_PARAM = ':userId([0-9a-fA-F-]{36})';
 
 /**
  * GET /api/users
@@ -94,7 +95,7 @@ router.get(
  * Get user profile by ID
  */
 router.get(
-  '/:userId',
+  `/${USER_ID_PARAM}`,
   [param('userId').isUUID()],
   asyncHandler(async (req: Request, res: Response) => {
     const errors = validationResult(req);
@@ -121,7 +122,7 @@ router.get(
  * Update user profile (only own profile or admin)
  */
 router.patch(
-  '/:userId',
+  `/${USER_ID_PARAM}`,
   authMiddleware,
   [
     param('userId').isUUID(),
@@ -193,7 +194,7 @@ router.patch(
  * Soft delete user (only own account)
  */
 router.delete(
-  '/:userId',
+  `/${USER_ID_PARAM}`,
   authMiddleware,
   [param('userId').isUUID()],
   asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -223,7 +224,7 @@ router.delete(
  * Get user's connections
  */
 router.get(
-  '/:userId/connections',
+  `/${USER_ID_PARAM}/connections`,
   [param('userId').isUUID()],
   asyncHandler(async (req: Request, res: Response) => {
     const errors = validationResult(req);
@@ -255,7 +256,7 @@ router.get(
  * Follow a user
  */
 router.post(
-  '/:userId/follow',
+  `/${USER_ID_PARAM}/follow`,
   authMiddleware,
   [param('userId').isUUID()],
   asyncHandler(async (req: AuthRequest, res: Response) => {
