@@ -1,58 +1,124 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiClient } from '@/lib/api';
 
 export interface User {
     id: string;
-    name: string;
-    avatar: string;
+    username?: string;
+    email?: string;
+    avatar?: string;
     gender?: string;
     interests: string[];
     vibeCharacteristics?: {
         nightOwl: boolean;
         texter: boolean;
     };
-    vibeScore?: number; // For compatibility
+    vibeScore?: number;
+    createdAt?: string;
 }
 
 interface UserContextType {
     user: User | null;
-    setUser: (user: User) => void;
-    logout: () => void;
+    token: string | null;
     isLoading: boolean;
+    isAuthenticated: boolean;
+    register: (email: string, username: string, password: string) => Promise<void>;
+    login: (email: string, password: string) => Promise<void>;
+    logout: () => void;
+    updateProfile: (profile: Partial<User>) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
     const [user, setUserState] = useState<User | null>(null);
+    const [token, setTokenState] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Load from localStorage if persists
+    // Load token and fetch user on mount
     useEffect(() => {
-        const saved = localStorage.getItem('vibelink_user');
-        if (saved) {
+        const initializeAuth = async () => {
             try {
-                // eslint-disable-next-line react-hooks/set-state-in-effect
-                setUserState(JSON.parse(saved));
-            } catch (e) {
-                console.error("Failed to parse user data", e);
+                const savedToken = localStorage.getItem('vibelink_token');
+                if (savedToken) {
+                    setTokenState(savedToken);
+                    // Fetch current user
+                    const currentUser = await apiClient.getCurrentUser(savedToken);
+                    setUserState(currentUser);
+                }
+            } catch (error) {
+                console.error('Failed to restore session:', error);
+                // Clear invalid token
+                localStorage.removeItem('vibelink_token');
+                setTokenState(null);
+            } finally {
+                setIsLoading(false);
             }
-        }
-        setIsLoading(false);
+        };
+
+        initializeAuth();
     }, []);
 
-    const setUser = (newUser: User) => {
-        setUserState(newUser);
-        localStorage.setItem('vibelink_user', JSON.stringify(newUser));
+    const register = async (email: string, username: string, password: string) => {
+        try {
+            const response = await apiClient.register({ email, username, password });
+            const newToken = response.token;
+            const newUser = response.user;
+
+            setTokenState(newToken);
+            setUserState(newUser);
+            localStorage.setItem('vibelink_token', newToken);
+        } catch (error) {
+            console.error('Registration failed:', error);
+            throw error;
+        }
+    };
+
+    const login = async (email: string, password: string) => {
+        try {
+            const response = await apiClient.login({ email, password });
+            const newToken = response.token;
+            const newUser = response.user;
+
+            setTokenState(newToken);
+            setUserState(newUser);
+            localStorage.setItem('vibelink_token', newToken);
+        } catch (error) {
+            console.error('Login failed:', error);
+            throw error;
+        }
     };
 
     const logout = () => {
         setUserState(null);
-        localStorage.removeItem('vibelink_user');
+        setTokenState(null);
+        localStorage.removeItem('vibelink_token');
+    };
+
+    const updateProfile = async (profile: Partial<User>) => {
+        if (!token) throw new Error('Not authenticated');
+        try {
+            const updated = await apiClient.updateProfile(token, profile);
+            setUserState(updated);
+        } catch (error) {
+            console.error('Profile update failed:', error);
+            throw error;
+        }
     };
 
     return (
-        <UserContext.Provider value={{ user, setUser, logout, isLoading }}>
+        <UserContext.Provider
+            value={{
+                user,
+                token,
+                isLoading,
+                isAuthenticated: !!token && !!user,
+                register,
+                login,
+                logout,
+                updateProfile,
+            }}
+        >
             {children}
         </UserContext.Provider>
     );

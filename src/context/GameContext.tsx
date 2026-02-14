@@ -5,8 +5,9 @@ import { io, Socket } from "socket.io-client";
 import { useUser, User } from "./UserContext";
 import { ROOM_CHALLENGES, ROOM_SYNERGY } from "@/lib/roomQuestions";
 import { usePathname } from "next/navigation";
+import { apiClient } from "@/lib/api";
 
-const SOCKET_URL = "http://localhost:4000";
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
 
 export interface Message {
     user: { id: string; name: string };
@@ -62,8 +63,13 @@ interface GameContextType {
     submitReaction: (captionAuthorId: string, reaction: string) => void;
     connectionError: boolean;
     isRoundTransitioning: boolean;
-    isGameFinished: boolean; // NEW: Strict check for matches/results
-    isGameStarted: boolean;  // NEW: Strict check for game start
+    isGameFinished: boolean;
+    isGameStarted: boolean;
+    // API Methods
+    getRooms: () => Promise<any[]>;
+    createGameSession: (roomId: string, participantIds: string[]) => Promise<any>;
+    joinRoomAPI: (roomId: string) => Promise<any>;
+    leaveRoomAPI: (roomId: string) => Promise<any>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -77,15 +83,18 @@ const SIMULATED_NAMES = [
 const SIMULATED_AVATARS = ['😎', '🦄', '🚀', '🍕', '👾', '🌈', '🍦', '🍩', '🏀', '🎸'];
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
-    const { user } = useUser();
+    const { user, token } = useUser();
 
-    // Lazy initialization of socket
+    // Lazy initialization of socket with auth token
     const [socket] = useState<Socket>(() => io(SOCKET_URL, {
         autoConnect: false,
         reconnectionAttempts: Infinity,
         reconnectionDelay: 1000,
         timeout: 10000,
         transports: ["websocket", "polling"],
+        auth: {
+            token: token || "",
+        },
     }));
 
     const [gameState, setGameState] = useState<GameState | null>(null);
@@ -602,7 +611,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
         const availableNames = [...SIMULATED_NAMES];
         const currentUsers = [...gameState.users];
-        const existingNames = new Set(currentUsers.map(u => u.name));
+        const existingNames = new Set(currentUsers.map(u => u.username));
         let changed = false;
 
         const needed = 20 - currentUsers.length;
@@ -615,7 +624,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             if (!existingNames.has(nameToUse)) {
                 currentUsers.push({
                     id: `sim-${nameToUse}-${Date.now()}-${Math.random()}`,
-                    name: nameToUse,
+                    username: nameToUse,
                     avatar: randomAvatar,
                     interests: [],
                     vibeCharacteristics: { nightOwl: true, texter: true },
@@ -726,6 +735,67 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         return () => clearInterval(timer);
     }, [gameState?.gameState]); // ONLY Depend on gameState (to start/stop), NOT on timeLeft or questionCount to avoid re-creation
 
+    // GAME SESSION API METHODS
+    const getRooms = useCallback(async () => {
+        if (!token) {
+            console.error("❌ No token, cannot fetch rooms");
+            return [];
+        }
+        try {
+            const rooms = await apiClient.listRooms(token);
+            console.log("✅ Rooms fetched:", rooms);
+            return rooms;
+        } catch (error) {
+            console.error("❌ Failed to fetch rooms:", error);
+            return [];
+        }
+    }, [token]);
+
+    const createGameSession = useCallback(async (roomId: string, participantIds: string[]) => {
+        if (!token) {
+            console.error("❌ No token, cannot create game session");
+            return null;
+        }
+        try {
+            const session = await apiClient.createGameSession(token, { roomId, participantIds });
+            console.log("✅ Game session created:", session);
+            return session;
+        } catch (error) {
+            console.error("❌ Failed to create game session:", error);
+            return null;
+        }
+    }, [token]);
+
+    const joinRoomAPI = useCallback(async (roomId: string) => {
+        if (!token) {
+            console.error("❌ No token, cannot join room");
+            return null;
+        }
+        try {
+            const result = await apiClient.joinRoom(roomId, token);
+            console.log("✅ Joined room:", result);
+            return result;
+        } catch (error) {
+            console.error("❌ Failed to join room:", error);
+            return null;
+        }
+    }, [token]);
+
+    const leaveRoomAPI = useCallback(async (roomId: string) => {
+        if (!token) {
+            console.error("❌ No token, cannot leave room");
+            return null;
+        }
+        try {
+            const result = await apiClient.leaveRoom(roomId, token);
+            console.log("✅ Left room:", result);
+            return result;
+        } catch (error) {
+            console.error("❌ Failed to leave room:", error);
+            return null;
+        }
+    }, [token]);
+
     // ACTIONS
     const joinRoom = useCallback((roomId: string) => {
         // Reset state for new room
@@ -829,7 +899,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             if (!socket.connected) {
                 setGameState(prev => prev ? ({
                     ...prev,
-                    messages: [...prev.messages, { user: { id: user.id, name: user.name }, message, timestamp: new Date().toISOString() }]
+                    messages: [...prev.messages, { user: { id: user.id, name: user.username || 'Unknown' }, message, timestamp: new Date().toISOString() }]
                 }) : null);
             }
         }
@@ -911,8 +981,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         submitReaction,
         connectionError,
         isRoundTransitioning,
-        isGameFinished, // EXPORTED
-        isGameStarted   // EXPORTED
+        isGameFinished,
+        isGameStarted,
+        getRooms,
+        createGameSession,
+        joinRoomAPI,
+        leaveRoomAPI,
     };
 
     return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

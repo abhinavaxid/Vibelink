@@ -6,39 +6,43 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { NeonButton } from "@/components/ui/NeonButton";
 import { GlassCard } from "@/components/ui/GlassCard";
-import { generateId } from "@/lib/utils";
 
 const avatars = ["🦊", "🐼", "🦁", "🐰", "🐸", "🦄", "👽", "🤖", "👻", "🐯"];
 const interestsList = ["Gaming", "Music", "Tech", "Art", "Travel", "Food", "Fashion", "Memes", "Fitness", "Movies"];
 
 export function OnboardingForm() {
-    const { setUser } = useUser();
+    const { user, updateProfile } = useUser();
     const router = useRouter();
-    const [name, setName] = useState("");
-    const [selectedAvatar, setSelectedAvatar] = useState(avatars[0]);
-    const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+    const [username, setUsername] = useState(user?.username || "");
+    const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar || avatars[0]);
+    const [selectedInterests, setSelectedInterests] = useState<string[]>(user?.interests || []);
+    const [isNightOwl, setIsNightOwl] = useState(user?.vibeCharacteristics?.nightOwl ?? true);
+    const [isTexter, setIsTexter] = useState(user?.vibeCharacteristics?.texter ?? true);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
 
-    // Vibe Quiz State
-    const [isNightOwl, setIsNightOwl] = useState(true);
-    const [isTexter, setIsTexter] = useState(true);
-
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) return;
+        if (!username.trim()) return;
 
-        setUser({
-            id: generateId(),
-            name,
-            avatar: selectedAvatar,
-            interests: selectedInterests,
-            vibeCharacteristics: {
-                nightOwl: isNightOwl,
-                texter: isTexter
-            },
-            vibeScore: 0
-        });
+        setLoading(true);
+        setError("");
 
-        router.push('/lobby');
+        try {
+            await updateProfile({
+                username,
+                avatar: selectedAvatar,
+                interests: selectedInterests,
+                vibeCharacteristics: {
+                    nightOwl: isNightOwl,
+                    texter: isTexter,
+                },
+            });
+            router.push('/lobby');
+        } catch (err: any) {
+            setError(err.message || "Failed to update profile");
+            setLoading(false);
+        }
     };
 
     const toggleInterest = (interest: string) => {
@@ -63,6 +67,16 @@ export function OnboardingForm() {
                 </h2>
                 <p className="text-center text-gray-400 mb-8">Join the connection revolution.</p>
 
+                {error && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-red-500/20 border border-red-500 text-red-300 px-4 py-2 rounded-lg text-sm mb-4"
+                    >
+                        {error}
+                    </motion.div>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-8">
                     {/* Name & Avatar Section */}
                     <div className="space-y-4">
@@ -76,11 +90,12 @@ export function OnboardingForm() {
                                 <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">My Alias</label>
                                 <input
                                     type="text"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
                                     className="w-full bg-black/40 border-b-2 border-white/10 p-3 text-xl font-bold text-center text-white focus:outline-none focus:border-neon-purple transition-all placeholder:text-gray-600"
                                     placeholder="Enter your name..."
                                     required
+                                    disabled={loading}
                                 />
                             </div>
                         </div>
@@ -91,7 +106,8 @@ export function OnboardingForm() {
                                     key={avatar}
                                     type="button"
                                     onClick={() => setSelectedAvatar(avatar)}
-                                    className={`text-2xl p-2 rounded-xl transition-all hover:scale-110 ${selectedAvatar === avatar ? 'bg-neon-purple/20 scale-110 shadow-lg' : 'opacity-50 hover:opacity-100'}`}
+                                    disabled={loading}
+                                    className={`text-2xl p-2 rounded-xl transition-all hover:scale-110 disabled:cursor-not-allowed ${selectedAvatar === avatar ? 'bg-neon-purple/20 scale-110 shadow-lg' : 'opacity-50 hover:opacity-100'}`}
                                 >
                                     {avatar}
                                 </button>
@@ -105,8 +121,8 @@ export function OnboardingForm() {
                         <div className="flex justify-between gap-4">
                             {/* Time Preference */}
                             <div
-                                onClick={() => setIsNightOwl(!isNightOwl)}
-                                className="flex-1 cursor-pointer bg-white/5 p-3 rounded-lg flex items-center justify-between hover:bg-white/10 transition-colors"
+                                onClick={() => !loading && setIsNightOwl(!isNightOwl)}
+                                className={`flex-1 cursor-pointer bg-white/5 p-3 rounded-lg flex items-center justify-between hover:bg-white/10 transition-colors ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                                 <span className={isNightOwl ? "opacity-30" : "font-bold text-yellow-400"}>☀️ Early</span>
                                 <div className="w-10 h-5 bg-black rounded-full relative mx-2">
@@ -117,8 +133,8 @@ export function OnboardingForm() {
 
                             {/* Comm Preference */}
                             <div
-                                onClick={() => setIsTexter(!isTexter)}
-                                className="flex-1 cursor-pointer bg-white/5 p-3 rounded-lg flex items-center justify-between hover:bg-white/10 transition-colors"
+                                onClick={() => !loading && setIsTexter(!isTexter)}
+                                className={`flex-1 cursor-pointer bg-white/5 p-3 rounded-lg flex items-center justify-between hover:bg-white/10 transition-colors ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                                 <span className={isTexter ? "opacity-30" : "font-bold text-green-400"}>🗣️ Voice</span>
                                 <div className="w-10 h-5 bg-black rounded-full relative mx-2">
@@ -137,8 +153,9 @@ export function OnboardingForm() {
                                 <button
                                     key={interest}
                                     type="button"
-                                    onClick={() => toggleInterest(interest)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedInterests.includes(interest) ? 'bg-neon-blue text-white shadow-[0_0_15px_rgba(59,130,246,0.4)] scale-105' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}`}
+                                    onClick={() => !loading && toggleInterest(interest)}
+                                    disabled={loading}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:cursor-not-allowed ${selectedInterests.includes(interest) ? 'bg-neon-blue text-white shadow-[0_0_15px_rgba(59,130,246,0.4)] scale-105' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}`}
                                 >
                                     {interest}
                                 </button>
@@ -147,8 +164,14 @@ export function OnboardingForm() {
                         <p className="text-xs text-center mt-2 text-gray-500">{selectedInterests.length}/3 selected</p>
                     </div>
 
-                    <NeonButton type="submit" className="w-full py-4 text-lg mt-4" variant="primary" glowColor="cyan" disabled={!name}>
-                        Start Matching
+                    <NeonButton
+                        type="submit"
+                        className="w-full py-4 text-lg mt-4"
+                        variant="primary"
+                        glowColor="cyan"
+                        disabled={!username || loading}
+                    >
+                        {loading ? "Saving..." : "CONTINUE TO VIBE"}
                     </NeonButton>
                 </form>
             </motion.div>

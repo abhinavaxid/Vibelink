@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run socket\" \"next dev\"",
+    "dev": "next dev",
     "dev:custom": "nodemon server.js",
     "socket": "nodemon socket-server.js",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "npm run test:e2e",
+    "test:e2e": "node tests/run-tests.js",
+    "test:edge": "node tests/edge-cases.test.js",
+    "test:automation": "node tests/automation.test.js",
+    "test:all": "npm run test:e2e && npm run test:edge && npm run test:automation"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -28,11 +33,13 @@
     "@types/node": "^20.19.33",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "chromedriver": "^131.0.5",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "nodemon": "^3.1.11",
+    "selenium-webdriver": "^4.40.0",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5"

@@ -17,7 +17,7 @@ export function Navbar() {
                     <>
                         <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
                             <span className="text-xl">{user?.avatar}</span>
-                            <span className="font-bold text-sm hidden sm:block">{user?.name}</span>
+                            <span className="font-bold text-sm hidden sm:block">{user?.username}</span>
                         </div>
                         <button onClick={logout} className="text-xs hover:bg-red-500/20 hover:text-red-400 px-3 py-2 rounded transition-colors">
                             Logout

@@ -47,15 +47,19 @@ export default function RoomPage() {
   };
 
   const handleBackToMenu = () => {
-    window.location.href = '/';
+    window.location.href = '/lobby';
   };
 
   // Safe Cast for RoundRouter (it expects a specific shape, GameState matches mostly)
-  // We might need to map it if types don't align perfectly, but they seem close.
-  // GameState has 'users', RoundRouter expects 'players'.
+  // We map 'username' from User to 'name' for Player interface
   const mappedState = {
     gameState: gameState.gameState,
-    players: gameState.users,
+    players: gameState.users.map(u => ({
+      id: u.id,
+      name: u.username || 'Unknown',
+      score: u.score || 0,
+      avatar: u.avatar
+    })),
     gameType: 'Vibe Link Challenge'
   };
 

@@ -42,7 +42,7 @@ const ParticipantSidebar: React.FC<ParticipantSidebarProps> = ({ participants, c
                         <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-center">
                                 <div className={`font-medium truncate ${p.id === currentUser?.id ? 'text-neon-cyan' : 'text-gray-200'}`}>
-                                    {p.name} {p.id === currentUser?.id && '(You)'}
+                                    {p.username || 'Unknown'} {p.id === currentUser?.id && '(You)'}
                                 </div>
                             </div>
                             <div className="text-xs text-gray-500 flex items-center gap-2">

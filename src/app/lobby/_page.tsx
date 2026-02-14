@@ -1,14 +1,15 @@
 "use client";
 
 import { useUser } from "@/context/UserContext";
+import { useGame } from "@/context/GameContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { LogOut, Settings, FileText, Share2, Users } from "lucide-react";
+import { LogOut, Settings, FileText, Share2, Users, Loader } from "lucide-react";
 
 // --- Types & Data ---
 
-const ROOM_DATA = [
+const DEFAULT_ROOM_DATA = [
     {
         id: 'Friendship',
         title: 'Friendship Room',
@@ -97,7 +98,7 @@ const GlowingIcon = ({ type, color }: { type: string, color: string }) => {
     );
 };
 
-const RoomCard = ({ room, index, onJoin }: { room: typeof ROOM_DATA[0], index: number, onJoin: (id: string) => void }) => {
+const RoomCard = ({ room, index, onJoin, loading }: { room: typeof DEFAULT_ROOM_DATA[0], index: number, onJoin: (id: string) => void, loading: boolean }) => {
     return (
         <motion.div
             animate={{ y: [0, -10, 0] }}
@@ -108,7 +109,7 @@ const RoomCard = ({ room, index, onJoin }: { room: typeof ROOM_DATA[0], index: n
                 bg-white/5 backdrop-blur-xl border border-white/10 overflow-hidden
                 flex flex-col items-center justify-between p-8
                 transition-all duration-500 ease-out
-                hover:border-opacity-50
+                hover:border-opacity-50 ${loading ? 'opacity-50 pointer-events-none' : ''}
             `}
             style={{
                 boxShadow: `0 8px 32px 0 rgba(0,0,0,0.3)`
@@ -130,39 +131,82 @@ const RoomCard = ({ room, index, onJoin }: { room: typeof ROOM_DATA[0], index: n
 
             <button
                 onClick={() => onJoin(room.id)}
+                disabled={loading}
                 className={`
                     relative w-full py-4 rounded-full 
                     bg-white/5 border border-white/10 overflow-hidden
                     text-white font-medium tracking-wider uppercase text-sm
                     transition-all duration-300
                     hover:bg-white/10 hover:border-white/30 hover:shadow-[0_0_20px_${room.color}40]
-                    group/btn
+                    group/btn disabled:opacity-50 disabled:cursor-not-allowed
                 `}
             >
                 <div className={`absolute inset-0 bg-gradient-to-r ${room.gradient} opacity-0 group-hover/btn:opacity-20 transition-opacity duration-300`} />
-                <span className="relative z-10">Join Room</span>
+                <span className="relative z-10">{loading ? 'Joining...' : 'Join Room'}</span>
             </button>
         </motion.div>
     );
 };
 
 export default function LobbyPage() {
-    const { user, setUser, logout } = useUser();
+    const { user, logout } = useUser();
+    const { getRooms, joinRoomAPI } = useGame();
     const router = useRouter();
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [rooms, setRooms] = useState(DEFAULT_ROOM_DATA);
+    const [loading, setLoading] = useState(false);
+    const [joiningRoom, setJoiningRoom] = useState<string | null>(null);
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
     useEffect(() => {
-        if (!user) router.push('/');
+        if (!user) router.push('/login');
     }, [user, router]);
 
-    const handleJoin = (themeId: string) => {
-        const roomId = `${themeId}-${Math.random().toString(36).substring(2, 6)}`;
-        router.push(`/room/${roomId}`);
+    // Fetch rooms from API on mount
+    useEffect(() => {
+        const fetchRooms = async () => {
+            setLoading(true);
+            try {
+                const apiRooms = await getRooms();
+                if (apiRooms && apiRooms.length > 0) {
+                    // Map API rooms to our display format
+                    const mappedRooms = apiRooms.map((room: any, index: number) => ({
+                        id: room.id || `room-${index}`,
+                        title: room.name || `Room ${index + 1}`,
+                        desc: room.description || 'Connect with others',
+                        participants: room.participantCount || Math.floor(Math.random() * 50) + 5,
+                        gradient: DEFAULT_ROOM_DATA[index % DEFAULT_ROOM_DATA.length].gradient,
+                        border: DEFAULT_ROOM_DATA[index % DEFAULT_ROOM_DATA.length].border,
+                        glow: DEFAULT_ROOM_DATA[index % DEFAULT_ROOM_DATA.length].glow,
+                        color: DEFAULT_ROOM_DATA[index % DEFAULT_ROOM_DATA.length].color
+                    }));
+                    setRooms(mappedRooms);
+                }
+            } catch (error) {
+                console.error("Failed to fetch rooms:", error);
+                // Fallback to default rooms
+                setRooms(DEFAULT_ROOM_DATA);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchRooms();
+    }, [getRooms]);
+
+    const handleJoin = async (roomId: string) => {
+        setJoiningRoom(roomId);
+        try {
+            await joinRoomAPI(roomId);
+            router.push(`/room/${roomId}`);
+        } catch (error) {
+            console.error("Failed to join room:", error);
+            setJoiningRoom(null);
+        }
     };
 
     if (!user) return null;
@@ -233,7 +277,7 @@ export default function LobbyPage() {
                             className="flex items-center gap-3 px-2 py-1 hover:bg-white/5 rounded-full transition-colors"
                         >
                             <div className="text-right hidden sm:block">
-                                <div className="text-sm font-bold text-white shadow-black drop-shadow-md">{user.name}</div>
+                                <div className="text-sm font-bold text-white shadow-black drop-shadow-md">{user.username}</div>
                             </div>
                             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-cyan-500 p-[2px]">
                                 <div className="w-full h-full rounded-full bg-[#0a0520] flex items-center justify-center text-lg">
@@ -274,8 +318,8 @@ export default function LobbyPage() {
                         </div>
 
                         <div className="flex flex-wrap gap-8 justify-center lg:justify-start pb-12">
-                            {ROOM_DATA.map((room, index) => (
-                                <RoomCard key={room.id} room={room} index={index} onJoin={handleJoin} />
+                            {rooms.map((room, index) => (
+                                <RoomCard key={room.id} room={room} index={index} onJoin={handleJoin} loading={joiningRoom === room.id} />
                             ))}
                         </div>
                     </main>
