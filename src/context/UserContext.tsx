@@ -8,7 +8,7 @@ export interface User {
     email?: string;
     avatar?: string;
     gender?: string;
-    interests: string[];
+    interests?: string[];
     vibeCharacteristics?: {
         nightOwl: boolean;
         texter: boolean;

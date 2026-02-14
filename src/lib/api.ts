@@ -16,6 +16,14 @@ interface User {
     username: string;
     avatar?: string;
     bio?: string;
+    gender?: string;
+    interests?: string[];
+    vibeCharacteristics?: {
+        nightOwl: boolean;
+        texter: boolean;
+    };
+    vibeScore?: number;
+    createdAt?: string;
 }
 
 interface AuthResponse {
